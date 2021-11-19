@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 // Copyright 2015, Klaus Post, see LICENSE for details.
 //
@@ -39,12 +40,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/klauspost/reedsolomon"
 )
 
 var dataShards = flag.Int("data", 4, "Number of shards to split the data into")
 var parShards = flag.Int("par", 2, "Number of parity shards")
+var blockSize = flag.Int64("bs", 1024, "block size")
 var outFile = flag.String("out", "", "Alternative output path/file")
 
 func init() {
@@ -68,6 +71,7 @@ func main() {
 	fname := args[0]
 
 	// Create matrix
+	startTime := time.Now()
 	enc, err := reedsolomon.New(*dataShards, *parShards)
 	checkErr(err)
 
@@ -115,6 +119,7 @@ func main() {
 	// We don't know the exact filesize.
 	err = enc.Join(f, shards, len(shards[0])**dataShards)
 	checkErr(err)
+	fmt.Println("simple decoder time spent:", time.Now().Sub(startTime))
 }
 
 func checkErr(err error) {

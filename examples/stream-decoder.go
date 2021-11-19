@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 // Copyright 2015, Klaus Post, see LICENSE for details.
 //
@@ -39,6 +40,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/klauspost/reedsolomon"
 )
@@ -66,7 +68,7 @@ func main() {
 		os.Exit(1)
 	}
 	fname := args[0]
-
+	startTime := time.Now()
 	// Create matrix
 	enc, err := reedsolomon.NewStream(*dataShards, *parShards)
 	checkErr(err)
@@ -130,6 +132,7 @@ func main() {
 	// We don't know the exact filesize.
 	err = enc.Join(f, shards, int64(*dataShards)*size)
 	checkErr(err)
+	fmt.Println("simple encoder time spent:", time.Now().Sub(startTime))
 }
 
 func openInput(dataShards, parShards int, fname string) (r []io.Reader, size int64, err error) {

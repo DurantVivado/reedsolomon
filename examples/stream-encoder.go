@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 // Copyright 2015, Klaus Post, see LICENSE for details.
 //
@@ -40,6 +41,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"io"
 
@@ -75,6 +77,7 @@ func main() {
 	fname := args[0]
 
 	// Create encoding matrix.
+	startTime := time.Now()
 	enc, err := reedsolomon.NewStream(*dataShards, *parShards)
 	checkErr(err)
 
@@ -132,6 +135,7 @@ func main() {
 	checkErr(err)
 	fmt.Printf("File split into %d data + %d parity shards.\n", *dataShards, *parShards)
 
+	fmt.Println("simple encoder time spent:", time.Now().Sub(startTime))
 }
 
 func checkErr(err error) {

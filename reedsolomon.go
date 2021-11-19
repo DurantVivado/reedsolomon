@@ -733,33 +733,6 @@ func (r *reedSolomon) ReconstructData(shards [][]byte) error {
 	return r.reconstruct(shards, true)
 }
 
-//Reconstruct only the Parity
-func (r *reedSolomon) ReconstructParity(shards [][]byte) error {
-	if len(shards) != r.Shards {
-		return ErrTooFewShards
-	}
-	err := checkShards(shards, true)
-	if err != nil {
-		return err
-	}
-	shardSize := shardSize(shards)
-
-	// Quick check: are all of the shards present?  If so, there's
-	// nothing to do.
-	failParity := 0
-	for i := 0; i < r.Shards; i++ {
-		if i > r.DataShards && len(shards[i]) == 0 {
-			failParity++
-		}
-	}
-	if failParity == 0{
-		return nil
-	}
-	//the failed parity must be reconstructable
-	
-	//Pull out the 
-}
-
 // reconstruct will recreate the missing data shards, and unless
 // dataOnly is true, also the missing parity shards
 //
