@@ -42,7 +42,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/DurantVivado/reedsolomon"
+	"github.com/klauspost/reedsolomon"
 )
 
 var dataShards = flag.Int("data", 4, "Number of shards to split the data into")
