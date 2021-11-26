@@ -796,15 +796,15 @@ func (r *reedSolomon) ReconstructWithList(shards [][]byte, failList *map[int]boo
 	numberPresent := 0
 	dataPresent := 0
 	failMap := make(map[int]bool)
-	for k := range *failList {
-		failMap[(*dist)[k]] = true
-	}
-	for i := 0; i < r.Shards; i++ {
-		if _, ok := failMap[i]; !ok {
+	//we seek if dist contains the block in the failed disk
+	for i, blk := range *dist {
+		if _, ok := (*failList)[blk]; !ok {
 			numberPresent++
-			if i < r.DataShards {
+			if blk < r.DataShards {
 				dataPresent++
 			}
+		} else {
+			failMap[i] = true
 		}
 	}
 	if numberPresent == r.Shards || dataOnly && dataPresent == r.DataShards {
