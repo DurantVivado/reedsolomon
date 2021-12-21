@@ -107,6 +107,9 @@ func galMulSliceXor(c byte, in, out []byte, o *options) {
 		in = in[done:]
 		out = out[done:]
 	}
+	if len(in) == 0 {
+		return
+	}
 	out = out[:len(in)]
 	mt := mulTable[c][:256]
 	for i := range in {
@@ -114,7 +117,7 @@ func galMulSliceXor(c byte, in, out []byte, o *options) {
 	}
 }
 
-// slice galois add
+// simple slice xor
 func sliceXor(in, out []byte, o *options) {
 	if o.useSSE2 {
 		if len(in) >= bigSwitchover {
