@@ -1168,15 +1168,16 @@ func (r *reedSolomon) ReconstructWithKBlocks(shards [][]byte, failList *map[int]
 	dataPresent := 0
 	failMap := make(map[int]bool)
 	//we seek if dist contains the block in the failed disk
-	for i, blk := range *dist {
+	for _, blk := range *dist {
 		if _, ok := (*failList)[blk]; !ok {
 			numberPresent++
 			if blk < r.DataShards {
 				dataPresent++
 			}
-		} else {
-			failMap[i] = true
 		}
+		// else {
+		// 	failMap[i] = true
+		// }
 	}
 	if numberPresent == r.Shards || dataOnly && dataPresent == r.DataShards {
 		// Cool.  All of the shards data data.  We don't
@@ -1200,6 +1201,7 @@ func (r *reedSolomon) ReconstructWithKBlocks(shards [][]byte, failList *map[int]
 	validIndices := make([]int, r.DataShards)
 	invalidIndices := make([]int, 0)
 	//pick the valid blocks from chosenDisks
+	//map disk to actual block
 	mapNode := make(map[int]int)
 	for i, disk := range *dist {
 		mapNode[disk] = i
@@ -1209,47 +1211,59 @@ func (r *reedSolomon) ReconstructWithKBlocks(shards [][]byte, failList *map[int]
 		validIndices[i] = mapNode[disk]
 	}
 	// fmt.Printf("%v\n", validIndices)
+	for _, shard := range validIndices {
+		failMap[shard] = true
+	}
+	//we choose k blocks, and the left m blocks are taken as "failed"
 	for matrixRow := 0; matrixRow < r.Shards; matrixRow++ {
-		if _, ok := failMap[matrixRow]; ok {
+		if _, ok := failMap[matrixRow]; !ok {
 			invalidIndices = append(invalidIndices, matrixRow)
 		}
 	}
 	// Attempt to get the cached inverted matrix out of the tree
 	// based on the indices of the invalid rows.
-	// dataDecodeMatrix := r.tree.GetInvertedMatrix(invalidIndices)
+	dataDecodeMatrix := r.tree.GetInvertedMatrix(invalidIndices)
 
 	// If the inverted matrix isn't cached in the tree yet we must
 	// construct it ourselves and insert it into the tree for the
 	// future.  In this way the inversion tree is lazily loaded.
-	// if dataDecodeMatrix == nil {
-	// Pull out the rows of the matrix that correspond to the
-	// shards that we have and build a square matrix.  This
-	// matrix could be used to generate the shards that we have
-	// from the original data.
-	subMatrix, _ := newMatrix(r.DataShards, r.DataShards)
-	for subMatrixRow, validIndex := range validIndices {
-		for c := 0; c < r.DataShards; c++ {
-			subMatrix[subMatrixRow][c] = r.m[validIndex][c]
+	if dataDecodeMatrix == nil {
+		// Pull out the rows of the matrix that correspond to the
+		// shards that we have and build a square matrix.  This
+		// matrix could be used to generate the shards that we have
+		// from the original data.
+		subMatrix, _ := newMatrix(r.DataShards, r.DataShards)
+		for subMatrixRow, validIndex := range validIndices {
+			for c := 0; c < r.DataShards; c++ {
+				subMatrix[subMatrixRow][c] = r.m[validIndex][c]
+			}
+		}
+		// Invert the matrix, so we can go from the encoded shards
+		// back to the original data.  Then pull out the row that
+		// generates the shard that we want to decode.  Note that
+		// since this matrix maps back to the original data, it can
+		// be used to create a data shard, but not a parity shard.
+		dataDecodeMatrix, err = subMatrix.Invert()
+		if err != nil {
+			return err
+		}
+
+		// Cache the inverted matrix in the tree for future use keyed on the
+		// indices of the invalid rows.
+		err = r.tree.InsertInvertedMatrix(invalidIndices, dataDecodeMatrix, r.Shards)
+		if err != nil {
+			return err
 		}
 	}
-	// Invert the matrix, so we can go from the encoded shards
-	// back to the original data.  Then pull out the row that
-	// generates the shard that we want to decode.  Note that
-	// since this matrix maps back to the original data, it can
-	// be used to create a data shard, but not a parity shard.
-	dataDecodeMatrix, err := subMatrix.Invert()
-	if err != nil {
-		return err
+	//recover the map to actual failed blocks map
+	for k, _ := range failMap {
+		delete(failMap, k)
 	}
-
-	// Cache the inverted matrix in the tree for future use keyed on the
-	// indices of the invalid rows.
-	err = r.tree.InsertInvertedMatrix(invalidIndices, dataDecodeMatrix, r.Shards)
-	if err != nil {
-		return err
+	for i, blk := range *dist {
+		if _, ok := (*failList)[blk]; ok {
+			failMap[i] = ok
+		}
 	}
-	// }
-
 	// Re-create any data shards that were missing.
 	//
 	// The input to the coding is all of the shards we actually
