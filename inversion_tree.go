@@ -15,7 +15,7 @@ import (
 // when accessing cached matrices and inserting new ones.
 type inversionTree struct {
 	mutex sync.RWMutex
-	root  inversionNode
+	root  *inversionNode
 }
 
 type inversionNode struct {
@@ -29,7 +29,7 @@ type inversionNode struct {
 func newInversionTree(dataShards, parityShards int) *inversionTree {
 	identity, _ := identityMatrix(dataShards)
 	return &inversionTree{
-		root: inversionNode{
+		root: &inversionNode{
 			matrix:   identity,
 			children: make([]*inversionNode, dataShards+parityShards),
 		},
